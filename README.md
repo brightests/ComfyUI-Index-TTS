@@ -29,12 +29,14 @@
 | 分叉基线 | 上游 `2bff8b0`（Merge PR #148） |
 | 同步策略 | 手动合并上游更新，不自动同步；改动均已提交到 Fork 的 `main` |
 
-相对上游共 2 个提交：
+相对上游共 4 个提交：
 
 | 提交 | 类型 | 内容 |
 |---|---|---|
 | `d2e4170` | 修复 | vendored IndexTTS-2 生成代码兼容 transformers 5.x |
 | `4bb8e68` | 新增 | `Index TTS 2.5 Pro (多角色小说)` 节点 + 2.5 引擎音色缓存复用 |
+| `1adf890` | 文档 | README 补充 Fork 信息与本次改动说明 |
+| `86d2ea7` | 汉化 | 全部 21 个节点的简体中文语言包（ComfyUI 官方 `locales/` 机制） |
 
 获取本分支：
 
@@ -57,7 +59,7 @@ git merge fork/main
 
 ## 最新更新（重要）
 
-### 2026-11-07：本 Fork 新增 2.5 多角色小说节点 + transformers 5.x 兼容修复
+### 2026-11-07：本 Fork 新增 2.5 多角色小说节点 + transformers 5.x 兼容修复 + 全节点中文汉化
 
 #### 新增：`Index TTS 2.5 Pro (多角色小说)`
 
@@ -89,6 +91,20 @@ git merge fork/main
 - **处理**：新增 `indextts2/vendor/indextts/gpt/beam_constraints_compat.py`（HF 4.x 的 Constraint 系列实现，取自本仓库自带的 2.5 `_compat.py`），并给 `transformers_generation_utils.py` / `transformers_beam_search.py` 各加一层 fallback：v5 下改用本地约束类 + vendored `BeamSearchScorer`，v4 原路径仍优先。
 - **影响范围**：只影响 2.0 的导入与生成初始化；2.5 分支自带兼容层无需改动；transformers 4.x 行为不变。已验证 `num_beams=3` 的 beam search 与 2.0 默认 beam sample 两条生成路径。**不需要降级 transformers**。
 
+#### 汉化：全部 21 个节点的简体中文界面
+
+使用 ComfyUI 官方的 `locales/` 机制（`app/custom_node_manager.py` 扫描插件语言目录并由 `/i18n` 输出），不修改任何 Python 或前端代码，也不去改第三方翻译插件的字典。
+
+| 文件 | 内容 |
+|---|---|
+| `locales/zh/nodeDefs.json` | 21 个节点的中文显示名与描述、259 个输入标签（含 tooltip）、49 个输出标签、26 组下拉选项翻译；key 全部取自实时 `/object_info`，与节点注册名 / 输入 id 严格一致 |
+| `locales/zh/main.json` | 仅翻译插件专属的末级分类段 `voice` → 音色、`novels` → 小说，不动共享的 `audio` / `text`，避免影响其他插件 |
+
+- **命名**：中文名保留 `IndexTTS 2.5` 字样（例如 `IndexTTS 2.5 Pro · 多角色小说朗读`），搜索 `TTS 2.5` 仍能找到。
+- **与机翻插件的关系**：节点名含中文后，`ComfyUI-DD-Translation` 的 `hasNativeTranslation()` 会主动让路，「**编号**TTS 2.5」这类机翻会被官方中文名覆盖。
+- **生效方式**：`build_translations()` 带 `lru_cache` 且只在 ComfyUI 启动时构建 → 需 **重启 ComfyUI 服务**、浏览器 **Ctrl+F5 硬刷新**、并把界面语言设为中文。
+- **注意**：汉化只改显示文本，**不会**让 ComfyUI-Manager 的节点库面板出现本 Fork 新增的 Pro 节点（该面板读的是静态 `extension-node-map.json`，只登记上游的 20 个节点）。请在画布空白处双击，用走 `/object_info` 的原生搜索输入 `IndexTTS25ProNode` / `多角色` / `2.5 Pro`；别用带连字符的 `TTS 2.5 -`，新节点名没有 ` - `。
+
 改动文件一览：
 
 | 文件 | 变更 |
@@ -99,6 +115,10 @@ git merge fork/main
 | `indextts2/vendor/indextts/gpt/beam_constraints_compat.py` | 新增，v5 下的本地约束类 |
 | `indextts2/vendor/indextts/gpt/transformers_generation_utils.py` | 增加 v5 fallback |
 | `indextts2/vendor/indextts/gpt/transformers_beam_search.py` | 增加 v5 fallback |
+| `locales/zh/nodeDefs.json` | 新增，21 个节点的中文显示名 / 描述 / 输入输出标签 / 下拉选项 |
+| `locales/zh/main.json` | 新增，`voice` / `novels` 分类段的中文名 |
+
+> 前 6 个是代码补丁，后 2 个是纯数据语言包，无需安装依赖、不影响推理。
 
 > 环境提示：日志中 `DeepSpeed加载失败，回退到标准推理` 只是 fp16 分支的可选加速探测失败，不是错误；`GPT weights restored` 之后功能完全等价。Windows + Python 3.13 没有可用的 deepspeed 轮子，且该分支即便 import 成功也不会真正启用 DeepSpeed，**不需要安装**。
 
@@ -415,6 +435,7 @@ python -m pip install -U "huggingface_hub[hf_xet]"
 - 新增 `Index TTS 2.5 Pro (多角色小说)` 节点：6 个角色音频端口、中文角色名 / `role_map` / 自动分配、2.5 语言与语速、发音标注兼容、4 输出字幕时间轴修正
 - 2.5 引擎新增按角色复用 conditioning 缓存的能力（`reference_audio_path` / `emo_audio_path`），长文本编码次数由「段数」降为「角色数」
 - 修复 transformers 5.x 下 vendored IndexTTS-2 生成代码导入失败：新增本地 beam constraints 兼容层与第三层 fallback，无需降级 transformers
+- 新增简体中文语言包 `locales/zh/`：全部 21 个节点的显示名、描述、输入输出标签与下拉选项，走 ComfyUI 官方 `/i18n` 通道，需重启服务 + 硬刷新生效
 - 明确 deepspeed 只是可选加速探测，Windows / Python 3.13 无需安装
 
 ### 2026-08-15
@@ -712,6 +733,13 @@ python -m pip install -U "huggingface_hub[hf_xet]"
 - 本 Fork 已同时适配 4.50+ 与 5.x：5.x 下自动回退到内置的 beam constraints 兼容层，**无需降级 transformers**（详见上方 2026-11-07 更新）
 - 若仍在使用上游版本、未合并本 Fork 的修复，推荐 `transformers==4.52.1` 或 `4.54.1`：`pip install transformers==4.52.1`
 - 不建议在已有其他节点依赖 transformers 5.x（例如 `nobg`）的环境里全局降级，会连锁影响 huggingface_hub / tokenizers
+
+#### Q: 节点还是英文 / 显示「编号TTS」机翻 / 中文名不生效
+
+**解决方案**:
+- 本 Fork 自 `86d2ea7` 起自带 `locales/zh/`，走 ComfyUI 官方 `/i18n`，**必须重启 ComfyUI 服务**（语言包在启动时构建并缓存），随后浏览器 **Ctrl+F5 硬刷新**，并把界面语言设为中文
+- 若仍看到「编号…」，说明用的是上游版本或第三方机翻字典覆盖了显示；合并本 Fork 的 `main` 即可，官方原生中文名优先级更高
+- 中文界面与节点是否注册无关：ComfyUI-Manager 的节点库面板读静态映射、不会列出本 Fork 新增的 Pro 节点，请用画布双击的原生搜索（详见上方 2026-11-07 更新）
 
 #### Q: SafeTensorFile 没有 get_slice 属性 (#123)
 
