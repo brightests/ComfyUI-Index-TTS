@@ -17,7 +17,92 @@
 
 
 
+## 关于本 Fork（brightests）
+
+本仓库是上游 [chenpipi0807/ComfyUI-Index-TTS](https://github.com/chenpipi0807/ComfyUI-Index-TTS) 的个人维护分支，用于补齐本机环境兼容性与 IndexTTS-2.5 的多角色能力；不改变上游节点的既有用法。
+
+| 项 | 说明 |
+|---|---|
+| Fork 地址 | https://github.com/brightests/ComfyUI-Index-TTS |
+| 上游地址 | https://github.com/chenpipi0807/ComfyUI-Index-TTS |
+| 维护分支 | `main` |
+| 分叉基线 | 上游 `2bff8b0`（Merge PR #148） |
+| 同步策略 | 手动合并上游更新，不自动同步；改动均已提交到 Fork 的 `main` |
+
+相对上游共 2 个提交：
+
+| 提交 | 类型 | 内容 |
+|---|---|---|
+| `d2e4170` | 修复 | vendored IndexTTS-2 生成代码兼容 transformers 5.x |
+| `4bb8e68` | 新增 | `Index TTS 2.5 Pro (多角色小说)` 节点 + 2.5 引擎音色缓存复用 |
+
+获取本分支：
+
+```bash
+git clone https://github.com/brightests/ComfyUI-Index-TTS.git ComfyUI/custom_nodes/ComfyUI-Index-TTS
+```
+
+已安装上游仓库时，可加远端后合并：
+
+```bash
+cd ComfyUI/custom_nodes/ComfyUI-Index-TTS
+git remote add fork https://github.com/brightests/ComfyUI-Index-TTS.git
+git fetch fork
+git merge fork/main
+```
+
+> 这是非官方分支。若问题属于上游原有功能，请优先反馈到上游仓库；上游发新版后需手动合并。
+
+---
+
 ## 最新更新（重要）
+
+### 2026-11-07：本 Fork 新增 2.5 多角色小说节点 + transformers 5.x 兼容修复
+
+#### 新增：`Index TTS 2.5 Pro (多角色小说)`
+
+2.0 有 `Index TTS 2 Pro (小说多角色)`，2.5 原本没有对应节点。新节点把 2 Pro 的编排搬到 2.5 引擎，同时保留 2.5 的多语言 / 语速 / 发音标注能力，**不修改 vendored 推理代码**。
+
+- **端口与输出**：`narrator_audio` + `character1~5_audio` 共 6 个 AUDIO 输入；输出 `audio / seed / Subtitle / SimplifiedSubtitle`，与 2 Pro 完全一致，旧工作流换节点即可复用。
+- **角色标签**：兼容 `<Narrator>` / `<Character1..5>`，也支持 `<林黛玉>` 这类任意角色名。用 `role_map`（JSON，如 `{"林黛玉": "Character2", "宝玉": 3}`）把名字映射到端口，或开启 `auto_assign_roles` 按出现顺序自动占用空闲端口；未映射的角色回退旁白音色，字幕仍保留原名。首个标签之前的文本也会保留为旁白。
+- **2.5 参数**：全局 `lang`（ZH/EN/JA/ES/AR/ZH-EN）、`duration_factor`、`interval_silence_ms`、`text_normalization`、`emotion_audio` + `emotion_weight`，以及 2 Pro 已有的生成参数。
+- **发音标注仍可用**：解析器排除了含 `|` 的标签，`<行|XING2>` 不会被误当成角色分隔符。
+- **长文本提速**：2.5 上游以音色 WAV 路径作为 conditioning 缓存键，小说每段都换临时路径会重跑 wav2vec / CAMPPlus / s2mel 编码。本节点按角色预提取 conditioning 并注入缓存（失败时自动回退到「每角色固定 WAV 路径」），把编码次数从「段数」降到「角色数」；每段用 `seed + 段号` 固定随机种子，结果可复现。
+- **字幕时间轴修正**：按成功段落的实际时长累加，避免某段失败后字幕与音频错位。
+
+用法示例（`structured_text` 与 `role_map`）：
+
+```text
+<Narrator>暮色渐沉，院中传来脚步声。<林黛玉>今日风有些大。<Character1>我扶你进去。
+```
+
+```json
+{"林黛玉": "Character2"}
+```
+
+> 已知边界：不提供 `emo_text` / Qwen 情感文本（切换 loader 实例会破坏音色缓存）；lang / 语速 / 情感是全局配置，暂不支持每角色独立覆盖。
+
+#### 修复：transformers 5.x 下 TTS2 无法导入
+
+- **症状**：`Failed to import IndexTTS2 from vendored source ... No module named 'transformers.generation.beam_constraints'`。
+- **原因**：transformers ≥ 5 移除了 `transformers.generation.beam_constraints` 与 `beam_search`，`dummy_pt_objects` 中的 `DisjunctiveConstraint` 等符号也一并消失，而 IndexTTS-2 (v2) vendored 的 4.x 生成代码在导入期硬依赖它们。报错后半句 `Fallback failed: attempted relative import with no known parent package` 是 `model_loader.py` 按文件路径加载 `infer_v2.py` 引起的次生现象，不是根因。
+- **处理**：新增 `indextts2/vendor/indextts/gpt/beam_constraints_compat.py`（HF 4.x 的 Constraint 系列实现，取自本仓库自带的 2.5 `_compat.py`），并给 `transformers_generation_utils.py` / `transformers_beam_search.py` 各加一层 fallback：v5 下改用本地约束类 + vendored `BeamSearchScorer`，v4 原路径仍优先。
+- **影响范围**：只影响 2.0 的导入与生成初始化；2.5 分支自带兼容层无需改动；transformers 4.x 行为不变。已验证 `num_beams=3` 的 beam search 与 2.0 默认 beam sample 两条生成路径。**不需要降级 transformers**。
+
+改动文件一览：
+
+| 文件 | 变更 |
+|---|---|
+| `index_tts2_5_pro.py` | 新增，多角色编排节点 |
+| `__init__.py` | 注册 `IndexTTS25ProNode`（节点总数 20 → 21） |
+| `indextts2_5/infer.py` | `generate()` 增加可选 `reference_audio_path` / `emo_audio_path`，向后兼容 |
+| `indextts2/vendor/indextts/gpt/beam_constraints_compat.py` | 新增，v5 下的本地约束类 |
+| `indextts2/vendor/indextts/gpt/transformers_generation_utils.py` | 增加 v5 fallback |
+| `indextts2/vendor/indextts/gpt/transformers_beam_search.py` | 增加 v5 fallback |
+
+> 环境提示：日志中 `DeepSpeed加载失败，回退到标准推理` 只是 fp16 分支的可选加速探测失败，不是错误；`GPT weights restored` 之后功能完全等价。Windows + Python 3.13 没有可用的 deepspeed 轮子，且该分支即便 import 成功也不会真正启用 DeepSpeed，**不需要安装**。
+
+---
 
 ### 🔥 2026-08-15：IndexTTS-2.5 来了！
 
@@ -34,13 +119,14 @@
 - **保留 2.0 全部情感控制能力**（情感参考音频 / 8 维情感向量 / Qwen 情感文本分析）
 - **更快**：bf16 推理，速度约为 2.0 的 1.6 倍
 
-**新增五个节点（audio 分类下）：**
+**节点清单（audio 分类下）：**
 
 - `Index TTS 2.5 - Base (多语言/语速)`：基础合成 + 语言选择 + 语速控制 + 发音标注
 - `Index TTS 2.5 - Emotion Audio`：情感参考音频（音色与情感解耦）
 - `Index TTS 2.5 - Emotion Vector`：8 维情感向量滑条
 - `Index TTS 2.5 - Emotion Text`：情感描述控制，留空则自动分析主文本情感（需要 Qwen 情感模型）
 - `Index TTS 2.5 - Cache Control`：显存/缓存控制
+- `Index TTS 2.5 Pro (多角色小说)`：多角色小说朗读（本 Fork 新增，见上方 2026-11-07 更新）
 
 基础工作流已更新，详见 `./workflow/TTS2.5.json`（直接拖进 ComfyUI 页面即可导入）。
 
@@ -323,6 +409,14 @@ python -m pip install -U "huggingface_hub[hf_xet]"
 
 ## 更新日志
 
+### 2026-11-07（本 Fork）
+
+- 建立个人 Fork（https://github.com/brightests/ComfyUI-Index-TTS），基于上游 `2bff8b0`，补充 Fork 信息与获取方式
+- 新增 `Index TTS 2.5 Pro (多角色小说)` 节点：6 个角色音频端口、中文角色名 / `role_map` / 自动分配、2.5 语言与语速、发音标注兼容、4 输出字幕时间轴修正
+- 2.5 引擎新增按角色复用 conditioning 缓存的能力（`reference_audio_path` / `emo_audio_path`），长文本编码次数由「段数」降为「角色数」
+- 修复 transformers 5.x 下 vendored IndexTTS-2 生成代码导入失败：新增本地 beam constraints 兼容层与第三层 fallback，无需降级 transformers
+- 明确 deepspeed 只是可选加速探测，Windows / Python 3.13 无需安装
+
 ### 2026-08-15
 
 - **新增 IndexTTS-2.5 完整支持**：
@@ -402,7 +496,7 @@ python -m pip install -U "huggingface_hub[hf_xet]"
 ### 示例用法
 
 1. 将小说文本输入到 Novel Text Structure 节点
-2. 连接输出到 Index TTS Pro 节点
+2. 连接输出到 Index TTS 2 Pro（2.0）或 Index TTS 2.5 Pro（本 Fork 新增）节点
 3. 设置不同角色的语音
 4. 运行工作流生成多声音小说朗读
 5. 实在不会看我最新增加的工作流
@@ -612,12 +706,12 @@ python -m pip install -U "huggingface_hub[hf_xet]"
 
 #### Q: transformers 版本不兼容 (#117)
 
-**问题**: 使用 transformers>=4.57.1 版本后 TTS2 无法使用
+**问题**: 使用 transformers>=4.57.1 版本后 TTS2 无法使用；transformers 5.x 下报 `No module named 'transformers.generation.beam_constraints'`
 
 **解决方案**: 
-- 推荐使用 `transformers==4.52.1` 或 `transformers==4.54.1`
-- 安装命令: `pip install transformers==4.52.1`
-- 本插件已适配 transformers 4.50+ 版本的 API 变化
+- 本 Fork 已同时适配 4.50+ 与 5.x：5.x 下自动回退到内置的 beam constraints 兼容层，**无需降级 transformers**（详见上方 2026-11-07 更新）
+- 若仍在使用上游版本、未合并本 Fork 的修复，推荐 `transformers==4.52.1` 或 `4.54.1`：`pip install transformers==4.52.1`
+- 不建议在已有其他节点依赖 transformers 5.x（例如 `nobg`）的环境里全局降级，会连锁影响 huggingface_hub / tokenizers
 
 #### Q: SafeTensorFile 没有 get_slice 属性 (#123)
 
@@ -656,6 +750,7 @@ python -m pip install -U "huggingface_hub[hf_xet]"
 - 新增了 `Index TTS 2 Pro (小说多角色)` 节点
 - 支持多角色语音合成，可配合 `小说文本结构化` 节点使用
 - 支持最多 5 个角色 + 旁白
+- 2.5 用户可用本 Fork 新增的 `Index TTS 2.5 Pro (多角色小说)` 节点，还支持 `<林黛玉>` 等中文角色名
 
 ### 其他常见问题
 
