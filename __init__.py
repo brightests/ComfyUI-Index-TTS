@@ -43,6 +43,9 @@ from .index_tts2_5_voice_nodes import (
     IndexTTS25VoiceBaseNode,
 )
 
+# IndexTTS-2.5 多角色小说朗读节点
+from .index_tts2_5_pro import IndexTTS25ProNode
+
 # 注册ComfyUI节点
 NODE_CLASS_MAPPINGS = {
     "IndexTTSNode": IndexTTSNode,
@@ -68,6 +71,8 @@ NODE_CLASS_MAPPINGS = {
     "IndexTTS25SaveVoiceNode": IndexTTS25SaveVoiceNode,
     "IndexTTS25LoadVoiceNode": IndexTTS25LoadVoiceNode,
     "IndexTTS25VoiceBaseNode": IndexTTS25VoiceBaseNode,
+    # 2.5 多角色小说朗读
+    "IndexTTS25ProNode": IndexTTS25ProNode,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
@@ -94,6 +99,7 @@ NODE_DISPLAY_NAME_MAPPINGS = {
     "IndexTTS25SaveVoiceNode": "Index TTS 2.5 - Save Voice",
     "IndexTTS25LoadVoiceNode": "Index TTS 2.5 - Load Voice",
     "IndexTTS25VoiceBaseNode": "Index TTS 2.5 - Voice Base",
+    "IndexTTS25ProNode": "Index TTS 2.5 Pro (多角色小说)",
 }
 
 # 前端扩展：为 Load Voice 提供 .pt 文件选择/上传和动态刷新。

@@ -51,17 +51,27 @@ class IndexTTS25Engine:
         use_qwen: bool = False,
         verbose: bool = False,
         return_subtitles: bool = True,
+        # 多角色节点优化：允许调用方提供固定 WAV 路径并跨段落复用。
+        # 上游 infer 以 spk_audio_prompt / emo_audio_prompt 字符串作为 conditioning
+        # 缓存键，路径每次变化都会导致音色/情感特征被重新提取。
+        reference_audio_path: Optional[str] = None,
+        emo_audio_path: Optional[str] = None,
     ) -> Tuple[int, np.ndarray, Optional[str]]:
         # use_emo_text 需要 QwenEmotion 模型（use_qwen_emo=True 构造）
         need_qwen = bool(use_qwen)
         tts = self.loader.get_tts(use_qwen_emo=need_qwen)
 
-        if reference_audio is None:
+        if reference_audio_path:
+            spk_wav_path = reference_audio_path
+        elif reference_audio is not None:
+            spk_wav_path = save_temp_wav(reference_audio)
+        else:
             raise ValueError("reference_audio is required for IndexTTS-2.5")
-        spk_wav_path = save_temp_wav(reference_audio)
 
         emo_wav_path = None
-        if emo_ref_audio is not None:
+        if emo_audio_path:
+            emo_wav_path = emo_audio_path
+        elif emo_ref_audio is not None:
             emo_wav_path = save_temp_wav(emo_ref_audio)
 
         # Generation kwargs aligned with infer_v2_5
