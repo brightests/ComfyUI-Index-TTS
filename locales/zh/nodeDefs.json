@@ -1,0 +1,1486 @@
+{
+  "AudioCleanupNode": {
+    "display_name": "音频清理",
+    "description": "对参考音频做降噪、去混响、高低通滤波与音量归一化，提升音色复刻效果。",
+    "inputs": {
+      "audio": {
+        "name": "输入音频",
+        "tooltip": "待清理的音频。"
+      },
+      "denoise_strength": {
+        "name": "降噪强度",
+        "tooltip": "数值越大降噪越明显，过高可能损伤人声。"
+      },
+      "dereverb_strength": {
+        "name": "去混响强度",
+        "tooltip": "数值越大去除混响越明显。"
+      },
+      "high_pass_freq": {
+        "name": "高通截止频率 (Hz)",
+        "tooltip": "低于该频率的成分被衰减。"
+      },
+      "low_pass_freq": {
+        "name": "低通截止频率 (Hz)",
+        "tooltip": "高于该频率的成分被衰减。"
+      },
+      "normalize": {
+        "name": "音量归一化",
+        "tooltip": "是否对输出音频做音量归一化。",
+        "options": {
+          "true": "开启",
+          "false": "关闭"
+        }
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "清理后音频"
+      }
+    }
+  },
+  "IndexTTS25BaseNode": {
+    "display_name": "IndexTTS 2.5 · 基础合成（多语言/语速）",
+    "description": "用参考音频复刻音色进行 2.5 合成，支持中/英/日/西/阿多语言、语速控制与内联发音标注。",
+    "inputs": {
+      "text": {
+        "name": "合成文本",
+        "tooltip": "要朗读的文字；2.5 支持 <行|XING2> 这类内联发音标注。"
+      },
+      "reference_audio": {
+        "name": "参考音频",
+        "tooltip": "用于复刻音色的 3-15 秒干净人声。"
+      },
+      "lang": {
+        "name": "语言",
+        "tooltip": "合成语种；ZH/EN 为中英混合。",
+        "options": {
+          "ZH": "中文",
+          "EN": "英文",
+          "JA": "日文",
+          "ES": "西班牙文",
+          "AR": "阿拉伯文",
+          "ZH/EN": "中英混合"
+        }
+      },
+      "duration_factor": {
+        "name": "语速系数",
+        "tooltip": "0.5-2.0，大于 1 变慢，小于 1 变快。"
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "interval_silence_ms": {
+        "name": "段落间静音 (毫秒)",
+        "tooltip": "拼接各段音频时插入的静音长度。"
+      },
+      "text_normalization": {
+        "name": "文本归一化",
+        "tooltip": "把数字、符号转写为可读文字。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "字幕"
+      }
+    }
+  },
+  "IndexTTS25CacheControlNode": {
+    "display_name": "IndexTTS 2.5 · 显存缓存控制",
+    "description": "控制生成结束后是否把 2.5 模型保留在显存中，连续生成时可显著加快速度。",
+    "inputs": {
+      "keep_models_cached": {
+        "name": "保留模型缓存",
+        "tooltip": "生成后继续把模型留在显存，加快下一次调用。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "缓存控制"
+      }
+    }
+  },
+  "IndexTTS25EmotionAudioNode": {
+    "display_name": "IndexTTS 2.5 · 情感参考音频",
+    "description": "用独立的情感参考音频控制情绪，音色与情感解耦。",
+    "inputs": {
+      "text": {
+        "name": "合成文本",
+        "tooltip": "要朗读的文字；2.5 支持 <行|XING2> 这类内联发音标注。"
+      },
+      "reference_audio": {
+        "name": "参考音频",
+        "tooltip": "用于复刻音色的 3-15 秒干净人声。"
+      },
+      "lang": {
+        "name": "语言",
+        "tooltip": "合成语种；ZH/EN 为中英混合。",
+        "options": {
+          "ZH": "中文",
+          "EN": "英文",
+          "JA": "日文",
+          "ES": "西班牙文",
+          "AR": "阿拉伯文",
+          "ZH/EN": "中英混合"
+        }
+      },
+      "duration_factor": {
+        "name": "语速系数",
+        "tooltip": "0.5-2.0，大于 1 变慢，小于 1 变快。"
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "interval_silence_ms": {
+        "name": "段落间静音 (毫秒)",
+        "tooltip": "拼接各段音频时插入的静音长度。"
+      },
+      "text_normalization": {
+        "name": "文本归一化",
+        "tooltip": "把数字、符号转写为可读文字。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      },
+      "emo_ref_audio": {
+        "name": "情感参考音频",
+        "tooltip": "提供情感风格的音频，与音色解耦。"
+      },
+      "emotion_weight": {
+        "name": "情感强度",
+        "tooltip": "0-1，数值越大情感表现越明显。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "字幕"
+      }
+    }
+  },
+  "IndexTTS25EmotionTextNode": {
+    "display_name": "IndexTTS 2.5 · 情感文本",
+    "description": "用文字描述期望情绪（需 Qwen 情感模型），留空时自动分析主文本情感。",
+    "inputs": {
+      "text": {
+        "name": "合成文本",
+        "tooltip": "要朗读的文字；2.5 支持 <行|XING2> 这类内联发音标注。"
+      },
+      "reference_audio": {
+        "name": "参考音频",
+        "tooltip": "用于复刻音色的 3-15 秒干净人声。"
+      },
+      "lang": {
+        "name": "语言",
+        "tooltip": "合成语种；ZH/EN 为中英混合。",
+        "options": {
+          "ZH": "中文",
+          "EN": "英文",
+          "JA": "日文",
+          "ES": "西班牙文",
+          "AR": "阿拉伯文",
+          "ZH/EN": "中英混合"
+        }
+      },
+      "duration_factor": {
+        "name": "语速系数",
+        "tooltip": "0.5-2.0，大于 1 变慢，小于 1 变快。"
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "interval_silence_ms": {
+        "name": "段落间静音 (毫秒)",
+        "tooltip": "拼接各段音频时插入的静音长度。"
+      },
+      "text_normalization": {
+        "name": "文本归一化",
+        "tooltip": "把数字、符号转写为可读文字。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      },
+      "emotion_description": {
+        "name": "情感描述",
+        "tooltip": "用一句话描述期望情绪；留空则自动分析主文本（需 Qwen 模型）。"
+      },
+      "emotion_weight": {
+        "name": "情感强度",
+        "tooltip": "0-1，数值越大情感表现越明显。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "字幕"
+      }
+    }
+  },
+  "IndexTTS25EmotionVectorNode": {
+    "display_name": "IndexTTS 2.5 · 情感向量",
+    "description": "用 8 维情感强度滑条精细配比情绪。",
+    "inputs": {
+      "text": {
+        "name": "合成文本",
+        "tooltip": "要朗读的文字；2.5 支持 <行|XING2> 这类内联发音标注。"
+      },
+      "reference_audio": {
+        "name": "参考音频",
+        "tooltip": "用于复刻音色的 3-15 秒干净人声。"
+      },
+      "lang": {
+        "name": "语言",
+        "tooltip": "合成语种；ZH/EN 为中英混合。",
+        "options": {
+          "ZH": "中文",
+          "EN": "英文",
+          "JA": "日文",
+          "ES": "西班牙文",
+          "AR": "阿拉伯文",
+          "ZH/EN": "中英混合"
+        }
+      },
+      "duration_factor": {
+        "name": "语速系数",
+        "tooltip": "0.5-2.0，大于 1 变慢，小于 1 变快。"
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "interval_silence_ms": {
+        "name": "段落间静音 (毫秒)",
+        "tooltip": "拼接各段音频时插入的静音长度。"
+      },
+      "text_normalization": {
+        "name": "文本归一化",
+        "tooltip": "把数字、符号转写为可读文字。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      },
+      "Happy": {
+        "name": "高兴",
+        "tooltip": "高兴情绪强度 (0-1)。"
+      },
+      "Angry": {
+        "name": "愤怒",
+        "tooltip": "愤怒情绪强度 (0-1)。"
+      },
+      "Sad": {
+        "name": "悲伤",
+        "tooltip": "悲伤情绪强度 (0-1)。"
+      },
+      "Fear": {
+        "name": "恐惧",
+        "tooltip": "恐惧情绪强度 (0-1)。"
+      },
+      "Hate": {
+        "name": "反感",
+        "tooltip": "反感情绪强度 (0-1)。"
+      },
+      "Low": {
+        "name": "低落",
+        "tooltip": "低落情绪强度 (0-1)。"
+      },
+      "Surprise": {
+        "name": "惊讶",
+        "tooltip": "惊讶情绪强度 (0-1)。"
+      },
+      "Neutral": {
+        "name": "平静",
+        "tooltip": "平静情绪强度 (0-1)。"
+      },
+      "use_random": {
+        "name": "随机化",
+        "tooltip": "开启后忽略固定种子，每次生成随机。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "字幕"
+      }
+    }
+  },
+  "IndexTTS25ExtractVoiceNode": {
+    "display_name": "IndexTTS 2.5 · 提取音色",
+    "description": "一次提取参考音频的 2.5 音色特征，后续生成无需重复处理 WAV。",
+    "inputs": {
+      "reference_audio": {
+        "name": "参考音频",
+        "tooltip": "用于复刻音色的 3-15 秒干净人声。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音色"
+      }
+    }
+  },
+  "IndexTTS25LoadVoiceNode": {
+    "display_name": "IndexTTS 2.5 · 加载音色",
+    "description": "从 input/output 中选择已保存的 .pt 音色，或在节点上上传本地音色文件。",
+    "inputs": {
+      "voice_file": {
+        "name": "音色文件",
+        "tooltip": "选择 input/output 中的 .pt 音色文件。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音色"
+      }
+    }
+  },
+  "IndexTTS25ProNode": {
+    "display_name": "IndexTTS 2.5 Pro · 多角色小说朗读",
+    "description": "按 <Narrator>/<CharacterN>/<任意角色名> 标记逐段合成多角色小说，按角色复用音色特征并输出字幕。",
+    "inputs": {
+      "structured_text": {
+        "name": "结构化文本",
+        "tooltip": "带 <Narrator>/<CharacterN>/<任意角色名> 标记的多角色文本。"
+      },
+      "narrator_audio": {
+        "name": "旁白音色",
+        "tooltip": "旁白以及未映射角色使用的参考音频。"
+      },
+      "lang": {
+        "name": "语言",
+        "tooltip": "合成语种；ZH/EN 为中英混合。",
+        "options": {
+          "ZH": "中文",
+          "EN": "英文",
+          "JA": "日文",
+          "ES": "西班牙文",
+          "AR": "阿拉伯文",
+          "ZH/EN": "中英混合"
+        }
+      },
+      "duration_factor": {
+        "name": "语速系数",
+        "tooltip": "0.5-2.0，大于 1 变慢，小于 1 变快。"
+      },
+      "character1_audio": {
+        "name": "角色 1 音色",
+        "tooltip": "Character1 / 映射到端口 1 的角色所用参考音频。"
+      },
+      "character2_audio": {
+        "name": "角色 2 音色",
+        "tooltip": "Character2 / 映射到端口 2 的角色所用参考音频。"
+      },
+      "character3_audio": {
+        "name": "角色 3 音色",
+        "tooltip": "Character3 / 映射到端口 3 的角色所用参考音频。"
+      },
+      "character4_audio": {
+        "name": "角色 4 音色",
+        "tooltip": "Character4 / 映射到端口 4 的角色所用参考音频。"
+      },
+      "character5_audio": {
+        "name": "角色 5 音色",
+        "tooltip": "Character5 / 映射到端口 5 的角色所用参考音频。"
+      },
+      "role_map": {
+        "name": "角色映射 (JSON)",
+        "tooltip": "把文本里的角色名映射到音频端口，例如 {\"林黛玉\": \"Character2\"}。"
+      },
+      "auto_assign_roles": {
+        "name": "自动分配角色",
+        "tooltip": "开启后按首次出现顺序把新角色名分配到空闲端口。"
+      },
+      "emotion_audio": {
+        "name": "全局情感音频",
+        "tooltip": "多角色节点中所有段落共用的情感参考音频。"
+      },
+      "emotion_weight": {
+        "name": "情感强度",
+        "tooltip": "0-1，数值越大情感表现越明显。"
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "interval_silence_ms": {
+        "name": "段落间静音 (毫秒)",
+        "tooltip": "拼接各段音频时插入的静音长度。"
+      },
+      "text_normalization": {
+        "name": "文本归一化",
+        "tooltip": "把数字、符号转写为可读文字。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "完整字幕"
+      },
+      "3": {
+        "name": "简化字幕"
+      }
+    }
+  },
+  "IndexTTS25SaveVoiceNode": {
+    "display_name": "IndexTTS 2.5 · 保存音色",
+    "description": "按 SaveImage 风格把 2.5 音色 conditioning 保存到 output，支持子目录和自动计数。",
+    "inputs": {
+      "voice": {
+        "name": "音色",
+        "tooltip": "来自提取/加载音色节点的持久化 conditioning。"
+      },
+      "filename_prefix": {
+        "name": "文件名前缀",
+        "tooltip": "保存音色时使用的前缀，可带子目录。"
+      }
+    }
+  },
+  "IndexTTS25VoiceBaseNode": {
+    "display_name": "IndexTTS 2.5 · 音色基础合成",
+    "description": "基于已持久化的 2.5 音色直接合成，无需再次读取或编码参考音频。",
+    "inputs": {
+      "text": {
+        "name": "合成文本",
+        "tooltip": "要朗读的文字；2.5 支持 <行|XING2> 这类内联发音标注。"
+      },
+      "voice": {
+        "name": "音色",
+        "tooltip": "来自提取/加载音色节点的持久化 conditioning。"
+      },
+      "lang": {
+        "name": "语言",
+        "tooltip": "合成语种；ZH/EN 为中英混合。",
+        "options": {
+          "ZH": "中文",
+          "EN": "英文",
+          "JA": "日文",
+          "ES": "西班牙文",
+          "AR": "阿拉伯文",
+          "ZH/EN": "中英混合"
+        }
+      },
+      "duration_factor": {
+        "name": "语速系数",
+        "tooltip": "0.5-2.0，大于 1 变慢，小于 1 变快。"
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "interval_silence_ms": {
+        "name": "段落间静音 (毫秒)",
+        "tooltip": "拼接各段音频时插入的静音长度。"
+      },
+      "text_normalization": {
+        "name": "文本归一化",
+        "tooltip": "把数字、符号转写为可读文字。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "字幕"
+      }
+    }
+  },
+  "IndexTTS2BaseNode": {
+    "display_name": "IndexTTS 2 · 基础合成",
+    "description": "用参考音频复刻音色进行 IndexTTS-2 基础合成。",
+    "inputs": {
+      "text": {
+        "name": "合成文本",
+        "tooltip": "要朗读的文字；2.5 支持 <行|XING2> 这类内联发音标注。"
+      },
+      "reference_audio": {
+        "name": "参考音频",
+        "tooltip": "用于复刻音色的 3-15 秒干净人声。"
+      },
+      "mode": {
+        "name": "生成模式",
+        "tooltip": "2.0 的长度控制方式：自动 / 时长 / token 数。",
+        "options": {
+          "Auto": "自动",
+          "Duration": "时长控制",
+          "Tokens": "Token 控制"
+        }
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "字幕"
+      }
+    }
+  },
+  "IndexTTS2CacheControlNode": {
+    "display_name": "IndexTTS 2 · 显存缓存控制",
+    "description": "控制生成结束后是否把 2.0 模型保留在显存中。",
+    "inputs": {
+      "keep_models_cached": {
+        "name": "保留模型缓存",
+        "tooltip": "生成后继续把模型留在显存，加快下一次调用。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "缓存控制"
+      }
+    }
+  },
+  "IndexTTS2EmotionAudioNode": {
+    "display_name": "IndexTTS 2 · 情感参考音频",
+    "description": "用情感参考音频控制 2.0 合成的情绪。",
+    "inputs": {
+      "text": {
+        "name": "合成文本",
+        "tooltip": "要朗读的文字；2.5 支持 <行|XING2> 这类内联发音标注。"
+      },
+      "reference_audio": {
+        "name": "参考音频",
+        "tooltip": "用于复刻音色的 3-15 秒干净人声。"
+      },
+      "mode": {
+        "name": "生成模式",
+        "tooltip": "2.0 的长度控制方式：自动 / 时长 / token 数。",
+        "options": {
+          "Auto": "自动",
+          "Duration": "时长控制",
+          "Tokens": "Token 控制"
+        }
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      },
+      "emo_ref_audio": {
+        "name": "情感参考音频",
+        "tooltip": "提供情感风格的音频，与音色解耦。"
+      },
+      "emotion_weight": {
+        "name": "情感强度",
+        "tooltip": "0-1，数值越大情感表现越明显。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "字幕"
+      }
+    }
+  },
+  "IndexTTS2EmotionTextNode": {
+    "display_name": "IndexTTS 2 · 情感文本",
+    "description": "用情绪描述文本控制 2.0 合成（需 Qwen 情感模型）。",
+    "inputs": {
+      "text": {
+        "name": "合成文本",
+        "tooltip": "要朗读的文字；2.5 支持 <行|XING2> 这类内联发音标注。"
+      },
+      "reference_audio": {
+        "name": "参考音频",
+        "tooltip": "用于复刻音色的 3-15 秒干净人声。"
+      },
+      "mode": {
+        "name": "生成模式",
+        "tooltip": "2.0 的长度控制方式：自动 / 时长 / token 数。",
+        "options": {
+          "Auto": "自动",
+          "Duration": "时长控制",
+          "Tokens": "Token 控制"
+        }
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      },
+      "emotion_description": {
+        "name": "情感描述",
+        "tooltip": "用一句话描述期望情绪；留空则自动分析主文本（需 Qwen 模型）。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "字幕"
+      }
+    }
+  },
+  "IndexTTS2EmotionVectorNode": {
+    "display_name": "IndexTTS 2 · 情感向量",
+    "description": "用 8 维情感向量控制 2.0 合成。",
+    "inputs": {
+      "text": {
+        "name": "合成文本",
+        "tooltip": "要朗读的文字；2.5 支持 <行|XING2> 这类内联发音标注。"
+      },
+      "reference_audio": {
+        "name": "参考音频",
+        "tooltip": "用于复刻音色的 3-15 秒干净人声。"
+      },
+      "mode": {
+        "name": "生成模式",
+        "tooltip": "2.0 的长度控制方式：自动 / 时长 / token 数。",
+        "options": {
+          "Auto": "自动",
+          "Duration": "时长控制",
+          "Tokens": "Token 控制"
+        }
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      },
+      "Happy": {
+        "name": "高兴",
+        "tooltip": "高兴情绪强度 (0-1)。"
+      },
+      "Angry": {
+        "name": "愤怒",
+        "tooltip": "愤怒情绪强度 (0-1)。"
+      },
+      "Sad": {
+        "name": "悲伤",
+        "tooltip": "悲伤情绪强度 (0-1)。"
+      },
+      "Fear": {
+        "name": "恐惧",
+        "tooltip": "恐惧情绪强度 (0-1)。"
+      },
+      "Hate": {
+        "name": "反感",
+        "tooltip": "反感情绪强度 (0-1)。"
+      },
+      "Low": {
+        "name": "低落",
+        "tooltip": "低落情绪强度 (0-1)。"
+      },
+      "Surprise": {
+        "name": "惊讶",
+        "tooltip": "惊讶情绪强度 (0-1)。"
+      },
+      "Neutral": {
+        "name": "平静",
+        "tooltip": "平静情绪强度 (0-1)。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "字幕"
+      }
+    }
+  },
+  "IndexTTS2ProNode": {
+    "display_name": "IndexTTS 2 Pro · 小说多角色朗读",
+    "description": "按角色标签逐段合成 2.0 多角色小说朗读，可配合「小说文本结构化」节点使用。",
+    "inputs": {
+      "structured_text": {
+        "name": "结构化文本",
+        "tooltip": "带 <Narrator>/<CharacterN>/<任意角色名> 标记的多角色文本。"
+      },
+      "narrator_audio": {
+        "name": "旁白音色",
+        "tooltip": "旁白以及未映射角色使用的参考音频。"
+      },
+      "mode": {
+        "name": "生成模式",
+        "tooltip": "2.0 的长度控制方式：自动 / 时长 / token 数。",
+        "options": {
+          "Auto": "自动",
+          "Duration": "时长控制",
+          "Tokens": "Token 控制"
+        }
+      },
+      "character1_audio": {
+        "name": "角色 1 音色",
+        "tooltip": "Character1 / 映射到端口 1 的角色所用参考音频。"
+      },
+      "character2_audio": {
+        "name": "角色 2 音色",
+        "tooltip": "Character2 / 映射到端口 2 的角色所用参考音频。"
+      },
+      "character3_audio": {
+        "name": "角色 3 音色",
+        "tooltip": "Character3 / 映射到端口 3 的角色所用参考音频。"
+      },
+      "character4_audio": {
+        "name": "角色 4 音色",
+        "tooltip": "Character4 / 映射到端口 4 的角色所用参考音频。"
+      },
+      "character5_audio": {
+        "name": "角色 5 音色",
+        "tooltip": "Character5 / 映射到端口 5 的角色所用参考音频。"
+      },
+      "emotion_audio": {
+        "name": "全局情感音频",
+        "tooltip": "多角色节点中所有段落共用的情感参考音频。"
+      },
+      "emotion_weight": {
+        "name": "情感强度",
+        "tooltip": "0-1，数值越大情感表现越明显。"
+      },
+      "do_sample_mode": {
+        "name": "采样模式",
+        "tooltip": "关闭走束搜索（更稳定），开启按温度/Top-P 随机采样。",
+        "options": {
+          "off": "关闭（束搜索）",
+          "on": "开启（随机采样）"
+        }
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "max_tokens_per_sentence": {
+        "name": "每句最大 token 数",
+        "tooltip": "长文本自动分句时每句的上限。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "cache_control": {
+        "name": "缓存控制",
+        "tooltip": "接「显存缓存控制」节点，决定生成后是否卸载模型。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "完整字幕"
+      },
+      "3": {
+        "name": "简化字幕"
+      }
+    }
+  },
+  "IndexTTSNode": {
+    "display_name": "IndexTTS · 基础合成",
+    "description": "IndexTTS / 1.5 基础合成，支持模型版本、语言与语速选择。",
+    "inputs": {
+      "text": {
+        "name": "合成文本",
+        "tooltip": "要朗读的文字；2.5 支持 <行|XING2> 这类内联发音标注。"
+      },
+      "reference_audio": {
+        "name": "参考音频",
+        "tooltip": "用于复刻音色的 3-15 秒干净人声。"
+      },
+      "model_version": {
+        "name": "模型版本",
+        "tooltip": "选择 IndexTTS、1.5 或 2.0 模型。"
+      },
+      "language": {
+        "name": "识别语言",
+        "tooltip": "文本语言，auto 表示自动判断。",
+        "options": {
+          "auto": "自动判断",
+          "zh": "中文",
+          "en": "英文"
+        }
+      },
+      "speed": {
+        "name": "语速",
+        "tooltip": "1.0 为原速，数值越大越快。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      },
+      "sentence_split": {
+        "name": "分句方式",
+        "tooltip": "auto 自动切分，manual 手动切分。",
+        "options": {
+          "auto": "自动分句",
+          "manual": "手动分句"
+        }
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "简化字幕"
+      }
+    }
+  },
+  "IndexTTSProNode": {
+    "display_name": "IndexTTS Pro · 多角色朗读",
+    "description": "IndexTTS / 1.5 多角色小说朗读，最多 5 个角色 + 旁白。",
+    "inputs": {
+      "structured_text": {
+        "name": "结构化文本",
+        "tooltip": "带 <Narrator>/<CharacterN>/<任意角色名> 标记的多角色文本。"
+      },
+      "narrator_audio": {
+        "name": "旁白音色",
+        "tooltip": "旁白以及未映射角色使用的参考音频。"
+      },
+      "model_version": {
+        "name": "模型版本",
+        "tooltip": "选择 IndexTTS、1.5 或 2.0 模型。"
+      },
+      "language": {
+        "name": "识别语言",
+        "tooltip": "文本语言，auto 表示自动判断。",
+        "options": {
+          "auto": "自动判断",
+          "zh": "中文",
+          "en": "英文"
+        }
+      },
+      "speed": {
+        "name": "语速",
+        "tooltip": "1.0 为原速，数值越大越快。"
+      },
+      "seed": {
+        "name": "随机种子",
+        "tooltip": "固定种子可复现同一结果。"
+      },
+      "character1_audio": {
+        "name": "角色 1 音色",
+        "tooltip": "Character1 / 映射到端口 1 的角色所用参考音频。"
+      },
+      "character2_audio": {
+        "name": "角色 2 音色",
+        "tooltip": "Character2 / 映射到端口 2 的角色所用参考音频。"
+      },
+      "character3_audio": {
+        "name": "角色 3 音色",
+        "tooltip": "Character3 / 映射到端口 3 的角色所用参考音频。"
+      },
+      "character4_audio": {
+        "name": "角色 4 音色",
+        "tooltip": "Character4 / 映射到端口 4 的角色所用参考音频。"
+      },
+      "character5_audio": {
+        "name": "角色 5 音色",
+        "tooltip": "Character5 / 映射到端口 5 的角色所用参考音频。"
+      },
+      "temperature": {
+        "name": "采样温度",
+        "tooltip": "数值越高随机性越强，越低越稳定。"
+      },
+      "top_p": {
+        "name": "Top-P 核采样",
+        "tooltip": "累积概率阈值，2.5 建议 0.8 左右。"
+      },
+      "top_k": {
+        "name": "Top-K 采样",
+        "tooltip": "每步仅保留概率最高的 K 个候选。"
+      },
+      "repetition_penalty": {
+        "name": "重复惩罚",
+        "tooltip": "大于 1 可减少重复吐字。"
+      },
+      "length_penalty": {
+        "name": "长度惩罚",
+        "tooltip": "控制生成长度的倾向；0.0 表示不惩罚。"
+      },
+      "num_beams": {
+        "name": "束搜索数量",
+        "tooltip": "束数越大结果越稳但更慢、显存占用更高。"
+      },
+      "max_mel_tokens": {
+        "name": "最大声学 token 数",
+        "tooltip": "单段生成的梅尔 token 上限。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      },
+      "1": {
+        "name": "随机种子"
+      },
+      "2": {
+        "name": "完整字幕"
+      },
+      "3": {
+        "name": "简化字幕"
+      }
+    }
+  },
+  "NovelTextStructureNode": {
+    "display_name": "小说文本结构化",
+    "description": "把普通小说文本解析为 <Narrator>/<CharacterX> 结构，供 Pro 节点使用。",
+    "inputs": {
+      "novel_text": {
+        "name": "小说原文",
+        "tooltip": "待解析为多角色结构的纯文本。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "结构化文本"
+      }
+    }
+  },
+  "TimbreAudioLoader": {
+    "display_name": "音色音频加载器",
+    "description": "从插件内置音色目录选择参考音频，支持刷新文件列表。",
+    "inputs": {
+      "audio_file": {
+        "name": "音频文件",
+        "tooltip": "从插件内置音色目录选择参考音频。"
+      },
+      "refresh": {
+        "name": "刷新列表",
+        "tooltip": "重新扫描音色文件列表。"
+      }
+    },
+    "outputs": {
+      "0": {
+        "name": "音频"
+      }
+    }
+  }
+}
