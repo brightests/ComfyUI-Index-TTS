@@ -55,8 +55,16 @@ try:
     from transformers.utils.dummy_pt_objects import DisjunctiveConstraint, PhrasalConstraint, BeamScorer, ConstrainedBeamSearchScorer
     from .transformers_beam_search import BeamSearchScorer
 except Exception:
-    from transformers.generation.beam_constraints import DisjunctiveConstraint, PhrasalConstraint
-    from transformers.generation.beam_search import BeamScorer, BeamSearchScorer, ConstrainedBeamSearchScorer
+    try:
+        from transformers.generation.beam_constraints import DisjunctiveConstraint, PhrasalConstraint
+        from transformers.generation.beam_search import BeamScorer, BeamSearchScorer, ConstrainedBeamSearchScorer
+    except Exception:
+        # transformers >= 5.0 removed transformers.generation.beam_constraints /
+        # beam_search (beam scoring/constraints moved out of core). Use the
+        # vendored implementations instead; v2 generation defaults to num_beams=3,
+        # so these classes must be functional, not placeholders.
+        from .beam_constraints_compat import DisjunctiveConstraint, PhrasalConstraint
+        from .transformers_beam_search import BeamScorer, BeamSearchScorer, ConstrainedBeamSearchScorer
 
 
 try:

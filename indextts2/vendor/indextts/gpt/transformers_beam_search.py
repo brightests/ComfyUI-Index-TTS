@@ -24,7 +24,11 @@ from transformers.utils import add_start_docstrings
 try:
     from transformers.utils.dummy_pt_objects import Constraint, ConstraintListState
 except Exception:
-    from transformers.generation.beam_constraints import Constraint, ConstraintListState
+    try:
+        from transformers.generation.beam_constraints import Constraint, ConstraintListState
+    except Exception:
+        # transformers >= 5.0 removed transformers.generation.beam_constraints.
+        from .beam_constraints_compat import Constraint, ConstraintListState
 
 
 PROCESS_INPUTS_DOCSTRING = r"""
