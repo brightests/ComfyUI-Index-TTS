@@ -8,7 +8,8 @@ from typing import Optional, Dict, Any
 class IndexTTS25Loader:
     """
     Lightweight model manager for IndexTTS-2.5.
-    - Resolves model root: <ComfyUI>/models/IndexTTS-2.5
+    - Resolves model root: <ComfyUI models dir>/IndexTTS-2.5
+      (follows --models-directory / --base-directory, or INDEXTTS_MODELS_DIR)
     - Validates required files
     - Lazy loads the IndexTTS2 (v2.5) instance and caches it
     - use_qwen_emo 的实例单独缓存（情感文本分析需要额外加载 Qwen 小模型）
@@ -37,8 +38,31 @@ class IndexTTS25Loader:
 
     @staticmethod
     def _default_models_root() -> str:
-        # <repo>/ComfyUI/models
-        # This file is at: .../ComfyUI/custom_nodes/ComfyUI-Index-TTS/indextts2_5/model_loader.py
+        """Return the ComfyUI models root (the parent of IndexTTS-2.5).
+
+        Resolution order:
+          1. INDEXTTS_MODELS_DIR environment variable (explicit override).
+          2. folder_paths.models_dir while running inside ComfyUI, so
+             --models-directory / --base-directory are honoured.
+          3. The historical <ComfyUI>/models path derived from __file__,
+             used when this module runs outside ComfyUI.
+
+        Keep in sync with indextts2/model_loader.py and the two download scripts.
+        """
+        override = os.environ.get("INDEXTTS_MODELS_DIR")
+        if override:
+            return os.path.abspath(os.path.expanduser(override))
+
+        # ComfyUI imports folder_paths before any custom node, so reading it from
+        # sys.modules avoids importing ComfyUI (and parsing its CLI args) when
+        # this module is used standalone.
+        folder_paths = sys.modules.get("folder_paths")
+        if folder_paths is not None:
+            models_dir = getattr(folder_paths, "models_dir", None)
+            if models_dir:
+                return os.path.abspath(models_dir)
+
+        # Fallback: .../ComfyUI/custom_nodes/ComfyUI-Index-TTS/indextts2_5/model_loader.py
         # Go up 4 levels to reach .../ComfyUI/
         here = os.path.abspath(__file__)
         for _ in range(4):

@@ -14,11 +14,39 @@ from typing import List
 from huggingface_hub import snapshot_download, hf_hub_download
 from huggingface_hub.errors import EntryNotFoundError
 
+
+def _resolve_models_root() -> Path:
+    """Return the ComfyUI models root (the parent of IndexTTS-2).
+
+    Resolution order:
+      1. INDEXTTS_MODELS_DIR environment variable (explicit override).
+      2. folder_paths.models_dir when ComfyUI is already initialised, so
+         --models-directory / --base-directory are honoured.
+      3. <ComfyUI>/models derived from this script's location.
+
+    Download scripts normally run standalone, where folder_paths is not loaded.
+    Set INDEXTTS_MODELS_DIR in that case to match a custom --models-directory.
+    Keep in sync with indextts2/model_loader.py and indextts2_5/model_loader.py.
+    """
+    override = os.environ.get("INDEXTTS_MODELS_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+
+    # Never import ComfyUI here: comfy.cli_args parses sys.argv at import time.
+    folder_paths = sys.modules.get("folder_paths")
+    if folder_paths is not None:
+        models_dir = getattr(folder_paths, "models_dir", None)
+        if models_dir:
+            return Path(models_dir).resolve()
+
+    # .../ComfyUI/custom_nodes/ComfyUI-Index-TTS/TTS2_download.py -> .../ComfyUI/models
+    return Path(__file__).resolve().parent.parent.parent / "models"
+
+
 class ModelDownloader:
     def __init__(self):
-        # 使用相对路径，确保在不同电脑上都能正常工作
-        self.script_dir = Path(__file__).parent
-        self.models_dir = self.script_dir.parent.parent / "models" / "IndexTTS-2"
+        # 跟随 ComfyUI 的 --models-directory / --base-directory；独立运行时可用 INDEXTTS_MODELS_DIR 覆盖
+        self.models_dir = _resolve_models_root() / "IndexTTS-2"
         # 创建目录
         self.models_dir.mkdir(parents=True, exist_ok=True)
 
